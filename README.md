@@ -5,12 +5,14 @@ A simple chess training application built with Python and Pygame. Play against a
 ## Features
 
 - Full chess rule implementation (including castling, en passant, check, checkmate)
-- Graphical 2D board with Unicode chess pieces
+- Graphical 2D board with Unicode chess pieces (or custom sprite sheets)
 - Click to select piece, click again to move
 - Choose to play as White or Black
 - Computer opponent makes random legal moves
 - Move validation and highlighting
 - Game over detection (checkmate, stalemate, insufficient material)
+- **Move history panel** showing all moves in standard algebraic notation (SAN)
+- Check (+) and checkmate (#) symbols in move notation
 
 ## Requirements
 

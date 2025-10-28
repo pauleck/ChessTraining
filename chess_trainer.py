@@ -46,7 +46,10 @@ class ChessGame:
     def __init__(self):
         """Initialize the chess game."""
         pygame.init()
-        self.screen = pygame.display.set_mode((WINDOW_SIZE, WINDOW_SIZE + 100))
+
+        # Window dimensions (main board + move history panel)
+        self.history_width = 300
+        self.screen = pygame.display.set_mode((WINDOW_SIZE + self.history_width, WINDOW_SIZE + 100))
         pygame.display.set_caption("Chess Trainer")
         self.clock = pygame.time.Clock()
 
@@ -86,6 +89,10 @@ class ChessGame:
         # Load piece sprites
         self.piece_images = {}
         self.use_sprites = self.load_sprites()
+
+        # Move history
+        self.move_history = []  # List of algebraic notation moves
+        self.move_number = 1
 
     def load_sprites(self) -> bool:
         """Load chess piece sprites from image file."""
@@ -159,6 +166,81 @@ class ChessGame:
                     (KING, WHITE_PIECE), (BISHOP, WHITE_PIECE), (KNIGHT, WHITE_PIECE), (ROOK, WHITE_PIECE)]
 
         return board
+
+    def square_to_algebraic(self, row: int, col: int) -> str:
+        """Convert board position to algebraic notation (e.g., e4)."""
+        files = 'abcdefgh'
+        ranks = '87654321'  # Row 0 is rank 8, row 7 is rank 1
+        return files[col] + ranks[row]
+
+    def piece_to_algebraic(self, piece_type: int) -> str:
+        """Convert piece type to algebraic notation letter."""
+        notation_map = {
+            KING: 'K',
+            QUEEN: 'Q',
+            ROOK: 'R',
+            BISHOP: 'B',
+            KNIGHT: 'N',
+            PAWN: ''  # Pawns have no letter
+        }
+        return notation_map.get(piece_type, '')
+
+    def get_algebraic_notation(self, from_row: int, from_col: int, to_row: int, to_col: int,
+                               is_capture: bool, is_castling: str = None, promotion_piece: int = None) -> str:
+        """Convert a move to standard algebraic notation."""
+        piece_type, color = self.board[from_row][from_col]
+
+        # Castling
+        if is_castling:
+            return "O-O" if is_castling == "kingside" else "O-O-O"
+
+        piece_letter = self.piece_to_algebraic(piece_type)
+        to_square = self.square_to_algebraic(to_row, to_col)
+
+        # Check for disambiguation (if multiple pieces of same type can move to same square)
+        disambiguation = ""
+        if piece_type != PAWN:
+            # Find all pieces of same type and color that can move to the target square
+            same_piece_moves = []
+            for r in range(8):
+                for c in range(8):
+                    if (r, c) == (from_row, from_col):
+                        continue
+                    p_type, p_color = self.board[r][c]
+                    if p_type == piece_type and p_color == color:
+                        legal_moves = self.get_legal_moves(r, c)
+                        if (to_row, to_col) in legal_moves:
+                            same_piece_moves.append((r, c))
+
+            if same_piece_moves:
+                # Need disambiguation
+                same_file = any(c == from_col for r, c in same_piece_moves)
+                same_rank = any(r == from_row for r, c in same_piece_moves)
+
+                if not same_file:
+                    disambiguation = 'abcdefgh'[from_col]
+                elif not same_rank:
+                    disambiguation = '87654321'[from_row]
+                else:
+                    disambiguation = self.square_to_algebraic(from_row, from_col)
+
+        # Build the move string
+        if piece_type == PAWN:
+            if is_capture:
+                move_str = 'abcdefgh'[from_col] + 'x' + to_square
+            else:
+                move_str = to_square
+        else:
+            move_str = piece_letter + disambiguation
+            if is_capture:
+                move_str += 'x'
+            move_str += to_square
+
+        # Promotion
+        if promotion_piece:
+            move_str += '=' + self.piece_to_algebraic(promotion_piece)
+
+        return move_str
 
     def square_to_coords(self, row: int, col: int) -> Tuple[int, int]:
         """Convert board position to pixel coordinates."""
@@ -344,8 +426,27 @@ class ChessGame:
         return legal
 
     def make_move(self, from_row: int, from_col: int, to_row: int, to_col: int) -> bool:
-        """Make a move on the board."""
+        """Make a move on the board and record it in algebraic notation."""
         piece_type, color = self.board[from_row][from_col]
+        target_piece, _ = self.board[to_row][to_col]
+
+        # Determine move characteristics before making the move
+        is_capture = target_piece != EMPTY or (piece_type == PAWN and (to_row, to_col) == self.en_passant_target)
+        is_castling_move = None
+        promotion_piece = None
+
+        # Check if castling
+        if piece_type == KING and abs(to_col - from_col) == 2:
+            is_castling_move = "kingside" if to_col == 6 else "queenside"
+
+        # Check if pawn promotion
+        if piece_type == PAWN:
+            if (color == WHITE_PIECE and to_row == 0) or (color == BLACK_PIECE and to_row == 7):
+                promotion_piece = QUEEN
+
+        # Generate algebraic notation for the move (before making it, to get correct disambiguation)
+        move_notation = self.get_algebraic_notation(from_row, from_col, to_row, to_col,
+                                                      is_capture, is_castling_move, promotion_piece)
 
         # Handle en passant capture
         if piece_type == PAWN and (to_row, to_col) == self.en_passant_target:
@@ -395,6 +496,17 @@ class ChessGame:
 
         # Switch turn
         self.current_turn = -self.current_turn
+
+        # Check for check or checkmate and add symbols
+        if self.is_in_check(self.current_turn):
+            if not self.has_legal_moves(self.current_turn):
+                move_notation += '#'  # Checkmate
+            else:
+                move_notation += '+'  # Check
+
+        # Add move to history
+        self.move_history.append(move_notation)
+
         return True
 
     def has_legal_moves(self, color: int) -> bool:
@@ -472,7 +584,7 @@ class ChessGame:
 
     def draw_status(self):
         """Draw status bar at the bottom."""
-        pygame.draw.rect(self.screen, BG_COLOR, (0, WINDOW_SIZE, WINDOW_SIZE, 100))
+        pygame.draw.rect(self.screen, BG_COLOR, (0, WINDOW_SIZE, WINDOW_SIZE + self.history_width, 100))
 
         # Status message
         status_surface = self.small_font.render(self.status_message, True, (255, 255, 255))
@@ -485,6 +597,50 @@ class ChessGame:
             turn_surface = self.small_font.render(turn_text, True, (255, 255, 255))
             turn_rect = turn_surface.get_rect(center=(WINDOW_SIZE // 2, WINDOW_SIZE + 60))
             self.screen.blit(turn_surface, turn_rect)
+
+    def draw_move_history(self):
+        """Draw the move history panel on the right side."""
+        # Draw background
+        history_rect = pygame.Rect(WINDOW_SIZE, 0, self.history_width, WINDOW_SIZE + 100)
+        pygame.draw.rect(self.screen, (50, 50, 50), history_rect)
+
+        # Draw title
+        title_surface = self.font.render("Move History", True, (255, 255, 255))
+        title_rect = title_surface.get_rect(center=(WINDOW_SIZE + self.history_width // 2, 30))
+        self.screen.blit(title_surface, title_rect)
+
+        # Draw moves in two columns (white and black)
+        y_offset = 70
+        line_height = 25
+        moves_per_page = (WINDOW_SIZE - 100) // line_height
+
+        # Calculate which moves to display (scroll to bottom)
+        total_move_pairs = (len(self.move_history) + 1) // 2
+        start_move = max(0, total_move_pairs - moves_per_page)
+
+        for i in range(start_move * 2, len(self.move_history), 2):
+            move_num = (i // 2) + 1
+            white_move = self.move_history[i]
+
+            # Draw move number
+            num_surface = self.small_font.render(f"{move_num}.", True, (200, 200, 200))
+            self.screen.blit(num_surface, (WINDOW_SIZE + 10, y_offset))
+
+            # Draw white's move
+            white_surface = self.small_font.render(white_move, True, (255, 255, 255))
+            self.screen.blit(white_surface, (WINDOW_SIZE + 50, y_offset))
+
+            # Draw black's move if it exists
+            if i + 1 < len(self.move_history):
+                black_move = self.move_history[i + 1]
+                black_surface = self.small_font.render(black_move, True, (180, 180, 180))
+                self.screen.blit(black_surface, (WINDOW_SIZE + 150, y_offset))
+
+            y_offset += line_height
+
+            # Stop if we've filled the panel
+            if y_offset > WINDOW_SIZE - 20:
+                break
 
     def draw_color_selection(self):
         """Draw color selection screen."""
@@ -632,6 +788,7 @@ class ChessGame:
                 self.draw_board()
                 self.draw_pieces()
                 self.draw_status()
+                self.draw_move_history()
 
             pygame.display.flip()
 
