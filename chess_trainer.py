@@ -83,6 +83,67 @@ class ChessGame:
 
         self.piece_font = pygame.font.Font(None, 80)
 
+        # Load piece sprites
+        self.piece_images = {}
+        self.use_sprites = self.load_sprites()
+
+    def load_sprites(self) -> bool:
+        """Load chess piece sprites from image file."""
+        sprite_path = "chess_pieces.png"
+        try:
+            sprite_sheet = pygame.image.load(sprite_path)
+
+            # Determine sprite sheet dimensions
+            sheet_width = sprite_sheet.get_width()
+            sheet_height = sprite_sheet.get_height()
+
+            # Common sprite sheet layouts:
+            # Layout 1: 6 columns x 2 rows (King, Queen, Bishop, Knight, Rook, Pawn for each color)
+            # Layout 2: 2 rows x 6 columns (White pieces, Black pieces)
+
+            # Try to detect layout by aspect ratio
+            if sheet_width > sheet_height:
+                # Horizontal layout: 6 columns x 2 rows
+                cols, rows = 6, 2
+                piece_order = [KING, QUEEN, BISHOP, KNIGHT, ROOK, PAWN]
+            else:
+                # Vertical layout or square
+                cols, rows = 2, 6
+                piece_order = [KING, QUEEN, BISHOP, KNIGHT, ROOK, PAWN]
+
+            piece_width = sheet_width // cols
+            piece_height = sheet_height // rows
+
+            # Extract pieces from sprite sheet
+            # Assuming first row is white, second row is black
+            for piece_idx, piece_type in enumerate(piece_order):
+                for color_idx, color in enumerate([WHITE_PIECE, BLACK_PIECE]):
+                    if cols == 6:  # Horizontal layout
+                        x = piece_idx * piece_width
+                        y = color_idx * piece_height
+                    else:  # Vertical layout
+                        x = color_idx * piece_width
+                        y = piece_idx * piece_height
+
+                    # Extract the piece image
+                    piece_rect = pygame.Rect(x, y, piece_width, piece_height)
+                    piece_img = sprite_sheet.subsurface(piece_rect)
+
+                    # Scale to fit square size with some padding
+                    target_size = int(SQUARE_SIZE * 0.85)
+                    piece_img = pygame.transform.smoothscale(piece_img, (target_size, target_size))
+
+                    self.piece_images[(piece_type, color)] = piece_img
+
+            print(f"Successfully loaded chess piece sprites from {sprite_path}")
+            print(f"Sprite sheet: {sheet_width}x{sheet_height}, Piece size: {piece_width}x{piece_height}")
+            return True
+
+        except (pygame.error, FileNotFoundError) as e:
+            print(f"Could not load sprite sheet ({sprite_path}): {e}")
+            print("Falling back to Unicode characters")
+            return False
+
     def init_board(self):
         """Initialize the chess board with starting position."""
         board = [[(EMPTY, 0) for _ in range(8)] for _ in range(8)]
@@ -394,13 +455,20 @@ class ChessGame:
                 piece_type, color = self.board[row][col]
                 if piece_type != EMPTY:
                     x, y = self.square_to_coords(row, col)
-                    symbol = self.piece_symbols[piece_type][color]
 
-                    # Render piece
-                    piece_color = (255, 255, 255) if color == WHITE_PIECE else (0, 0, 0)
-                    piece_surface = self.piece_font.render(symbol, True, piece_color)
-                    piece_rect = piece_surface.get_rect(center=(x + SQUARE_SIZE // 2, y + SQUARE_SIZE // 2))
-                    self.screen.blit(piece_surface, piece_rect)
+                    if self.use_sprites:
+                        # Use sprite images
+                        piece_img = self.piece_images.get((piece_type, color))
+                        if piece_img:
+                            piece_rect = piece_img.get_rect(center=(x + SQUARE_SIZE // 2, y + SQUARE_SIZE // 2))
+                            self.screen.blit(piece_img, piece_rect)
+                    else:
+                        # Use Unicode characters as fallback
+                        symbol = self.piece_symbols[piece_type][color]
+                        piece_color = (255, 255, 255) if color == WHITE_PIECE else (0, 0, 0)
+                        piece_surface = self.piece_font.render(symbol, True, piece_color)
+                        piece_rect = piece_surface.get_rect(center=(x + SQUARE_SIZE // 2, y + SQUARE_SIZE // 2))
+                        self.screen.blit(piece_surface, piece_rect)
 
     def draw_status(self):
         """Draw status bar at the bottom."""

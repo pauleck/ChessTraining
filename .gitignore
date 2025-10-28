@@ -1,0 +1,18 @@
+# Chess piece sprite sheet (user downloads their own)
+chess_pieces.png
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+*.egg-info/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo

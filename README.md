@@ -25,6 +25,22 @@ A simple chess training application built with Python and Pygame. Play against a
 pip install -r requirements.txt
 ```
 
+## Using Custom Chess Piece Graphics
+
+By default, the game uses Unicode chess piece characters. For better graphics, you can add a chess piece sprite sheet:
+
+1. Download a chess piece sprite sheet (PNG format)
+   - Example: https://spng.pngfind.com/pngs/s/692-6922125_chess-pieces-sprite-chess-pieces-sprite-sheet-hd.png
+   - Or search for "chess pieces sprite sheet PNG" and download one you like
+
+2. Save it as `chess_pieces.png` in the same directory as `chess_trainer.py`
+
+3. The sprite sheet should be organized as:
+   - **6 columns x 2 rows**: King, Queen, Bishop, Knight, Rook, Pawn (white on top, black on bottom)
+   - **OR 2 columns x 6 rows**: White pieces in left column, black pieces in right column
+
+The game will automatically detect and use the sprite sheet if present, otherwise it falls back to Unicode characters.
+
 ## How to Play
 
 1. Run the game:
