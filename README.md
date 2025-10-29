@@ -1,11 +1,26 @@
 # Chess Trainer
 
-A simple chess training application built with Python and Pygame. Play against a computer opponent that makes random legal moves.
+A chess training application available in both Python/Pygame and single-file HTML versions. Play against a computer opponent that makes random legal moves.
+
+## Versions
+
+### 1. HTML Version (chess_trainer.html)
+**Single self-contained HTML file** - Just open in any modern web browser!
+
+- No installation required
+- Works offline
+- Runs in any modern browser
+- Mobile-friendly responsive design
+
+### 2. Python Version (chess_trainer.py)
+Desktop application using Pygame with optional sprite sheet support.
 
 ## Features
 
+Both versions include:
+
 - Full chess rule implementation (including castling, en passant, check, checkmate)
-- Graphical 2D board with Unicode chess pieces (or custom sprite sheets)
+- Graphical 2D board with Unicode chess pieces
 - Click to select piece, click again to move
 - Choose to play as White or Black
 - Computer opponent makes random legal moves
@@ -14,22 +29,27 @@ A simple chess training application built with Python and Pygame. Play against a
 - **Move history panel** showing all moves in standard algebraic notation (SAN)
 - Check (+) and checkmate (#) symbols in move notation
 
-## Requirements
+## Quick Start
 
-- Python 3.7 or higher
-- pygame (the only external dependency!)
-
-## Installation
-
-1. Install the required packages:
-
+### HTML Version (Recommended for quick play):
 ```bash
-pip install -r requirements.txt
+# Just open the file in your browser
+open chess_trainer.html
+# or double-click chess_trainer.html
 ```
 
-## Using Custom Chess Piece Graphics
+### Python Version:
+```bash
+# Install pygame
+pip install pygame
 
-By default, the game uses Unicode chess piece characters. For better graphics, you can add a chess piece sprite sheet:
+# Run the game
+python chess_trainer.py
+```
+
+## Using Custom Chess Piece Graphics (Python Version Only)
+
+The Python version supports custom sprite sheets. The HTML version uses Unicode characters.
 
 1. Download a chess piece sprite sheet (PNG format)
    - Example: https://spng.pngfind.com/pngs/s/692-6922125_chess-pieces-sprite-chess-pieces-sprite-sheet-hd.png
